@@ -24,7 +24,7 @@ listManager.start = function(e, list, ctx) {
 
 	ctx.source = list;
 	ctx.target = list;
-	ctx.cache.target = list;
+	ctx.previous = list;
 
 	const { dragged, ghost } = ctx;
 
@@ -117,24 +117,26 @@ listManager.getList = function(list, ctx) {
 		}
 	}
 
-	if (shareList) {
-		ctx.target = shareList;
-		ctx.cache.target = shareList;
-	} else {
+	if (shareList) ctx.target = shareList;
+	else {
 		ctx.target = null;
 		return;
 	}
 
-	if (dragged.el === ctx.target.el) return;
+	/*
+		This lets u put an lm inside another lm. While keeping there content shared.
+		This feature hasn't been implemented.
+	*/
+	if (dragged.el.isSameNode(ctx.target.el)) return;
 
-	if (!ctx.source.el.isSameNode(ctx.target.el)) {
-		if (ctx.source.animation.scheduled) return;
+	if (!ctx.previous.el.isSameNode(ctx.target.el)) {
+		if (ctx.previous.animation.scheduled) return;
 		if (ctx.target.animation.scheduled) return;
 
-		listManager.animation.cancel(ctx.source);
+		listManager.animation.cancel(ctx.previous);
 		listManager.animation.cancel(ctx.target);
 
-		let listA = listManager.animation.capture(ctx, ctx.source.el);
+		let listA = listManager.animation.capture(ctx, ctx.previous.el);
 		listA = listA.filter(i => !i.el.isSameNode(dragged.el));
 
 		let listB = listManager.animation.capture(ctx, ctx.target.el);
@@ -192,18 +194,24 @@ listManager.getList = function(list, ctx) {
 
 		if (!target) drag.target.el.append(dragged.el);
 
-		ctx.buildPayload();
-		ctx.source.hook.onListChange(ctx.payload);
-		ctx.target.hook.onListChange(ctx.payload);
+		/*
+			const treeA = ctx.previous.cache.tree;
+			works but, if any change happens that not triggered by: dragging, dropping
+			the item by you it wont!
+			
+			Btw: while draggind this sould not occurs in most circumstances
+		*/
+		const treeA = ctx.previous.getTree(ctx);
+		const treeB = ctx.target.getTree(ctx);
 
-		let treeA = ctx.source.cache.tree;
-		let treeB = ctx.target.getTree(ctx);
-
-		listManager.animation.run(listA, treeA, ctx.source, ctx);
+		listManager.animation.run(listA, treeA, ctx.previous, ctx);
 		listManager.animation.run(listB, treeB, ctx.target, ctx);
 
-		ctx.source = ctx.target;
+		ctx.previous = shareList;
 
+		ctx.buildPayload();
+		ctx.previous.hook.onListChange(ctx.payload);
+		ctx.target.hook.onListChange(ctx.payload);
 		return;
 	}
 
@@ -552,11 +560,11 @@ listManager.removeHandler = function(ctx, list) {
 	}
 
 	ctx.buildPayload();
-	ctx.cache.target.hook.onEnd(ctx.payload);
+	ctx.previous.hook.onEnd(ctx.payload);
 
 	ctx.source = null;
 	ctx.target = null;
-	ctx.cache.target = null;
+	ctx.preivous = null;
 
 	ctx.pointer.down = false;
 	listManager.engie.grid.positions = null;
@@ -760,7 +768,7 @@ function listManager(listEl, o = {}) {
 	};
 
 	const ctx = {
-		cache: { target: null },
+		previous: null,
 		source: null,
 		target: null,
 		dragged: {
@@ -807,13 +815,18 @@ function listManager(listEl, o = {}) {
 				},
 				target: {
 					items: {
-						flat: ctx.cache.target.getFlat(ctx),
-						tree: ctx.cache.target.getTree(ctx),
+						flat: ctx.previous.getFlat(ctx),
+						tree: ctx.previous.getTree(ctx),
 					},
-					el: ctx.cache.target.el
+					el: ctx.previous.el
 				},
 				dragged: ctx.dragged,
-				ghost: ctx.ghost
+				ghost: {
+					el: ctx.ghost.el,
+					top: ctx.ghost.top,
+					left: ctx.ghost.left,
+					C: ctx.ghost.C
+				}
 			};
 		},
 		pointer: {
