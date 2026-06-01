@@ -92,9 +92,9 @@ listManager.move = function(e, list, ctx) {
 	else {
 		if (list.animation.scheduled) return;
 		if (scroll.ing) return;
-		if (list.type === 'grid') listManager.engie.grid.handler(ctx);
-		if (list.type === 'horizontal') listManager.engie.uneven(ctx);
-		if (list.type === 'vertical') listManager.engie.uneven(ctx);
+		if (list.layout === 'grid') listManager.engie.grid.handler(ctx);
+		if (list.layout === 'horizontal') listManager.engie.uneven(ctx);
+		if (list.layout === 'vertical') listManager.engie.uneven(ctx);
 	}
 }
 
@@ -165,7 +165,7 @@ listManager.getList = function(list, ctx) {
 			from: dragged.el.getBoundingClientRect()
 		});
 
-		if (list.type === 'grid' && target) {
+		if (list.layout === 'grid' && target) {
 			if (listB[listB.length - 2].el.isSameNode(target.el)) {
 				target.el.after(dragged.el);
 			} else {
@@ -174,7 +174,7 @@ listManager.getList = function(list, ctx) {
 			listManager.engie.grid.getPositions(ctx);
 		}
 
-		if (list.type === 'vertical' && target) {
+		if (list.layout === 'vertical' && target) {
 			if (ghost.C.Y > target.rect.top + target.rect.height / 2) {
 				target.el.after(dragged.el);
 			} else {
@@ -182,7 +182,7 @@ listManager.getList = function(list, ctx) {
 			}
 		}
 
-		if (list.type === 'horizontal' && target) {
+		if (list.layout === 'horizontal' && target) {
 			if (ghost.C.X > target.rect.left + target.rect.width / 2) {
 				target.el.after(dragged.el);
 			} else {
@@ -209,9 +209,9 @@ listManager.getList = function(list, ctx) {
 
 	if (ctx.target.animation.scheduled) return;
 	if (scroll.ing) return;
-	if (ctx.target.type === 'grid') listManager.engie.grid.handler(ctx);
-	if (ctx.target.type === 'horizontal') listManager.engie.uneven(ctx);
-	if (ctx.target.type === 'vertical') listManager.engie.uneven(ctx);
+	if (ctx.target.layout === 'grid') listManager.engie.grid.handler(ctx);
+	if (ctx.target.layout === 'horizontal') listManager.engie.uneven(ctx);
+	if (ctx.target.layout === 'vertical') listManager.engie.uneven(ctx);
 }
 
 listManager.engie = {};
@@ -236,7 +236,7 @@ listManager.utility.swap = function(ctx, event, el) {
 listManager.engie.uneven = function(ctx) {
 	const { target, ghost, dragged } = ctx;
 
-	const isVertical = target.type === 'vertical';
+	const isVertical = target.layout === 'vertical';
 	const ghostC = isVertical ? ghost.C.Y : ghost.C.X;
 
 	let prev = {}, next = {}, parent = {};
@@ -468,8 +468,8 @@ listManager.animation.play = function(items, list) {
 				offsetY + dy - offsetHeight
 			);
 
-			if (list.type === 'horizontal') offsetWidth += to.width - from.width;
-			if (list.type === 'vertical') offsetHeight += to.height - from.height;
+			if (list.layout === 'horizontal') offsetWidth += to.width - from.width;
+			if (list.layout === 'vertical') offsetHeight += to.height - from.height;
 
 			el.style.transform = `translate(${dx}px, ${dy}px)`;
 			el.style.minHeight = `${from.height}px`;
@@ -505,8 +505,8 @@ listManager.animation.play = function(items, list) {
 				const dwidth = to.width - from.width;
 				const dheight = to.height - from.height;
 
-				if (list.type === 'horizontal') offsetWidth += to.width - from.width;
-				if (list.type === 'vertical') offsetHeight += to.height - from.height;
+				if (list.layout === 'horizontal') offsetWidth += to.width - from.width;
+				if (list.layout === 'vertical') offsetHeight += to.height - from.height;
 
 				const x = dx * (1 - eased);
 				const y = dy * (1 - eased);
@@ -624,12 +624,12 @@ listManager.scroll.handler = function(ctx) {
 		const target = ctx.target.el;
 		const rect = target.getBoundingClientRect();
 
-		const threshold = ctx.scroll.threshold ?? listManager.scroll.threshold;
-		const speed = ctx.scroll.speed ?? listManager.scroll.speed;
+		const threshold = ctx.target.scroll.threshold ?? listManager.scroll.threshold;
+		const speed = ctx.target.scroll.speed ?? listManager.scroll.speed;
 
 		let scrollY = 0, scrollX = 0;
 
-		if (ctx.target.type === 'horizontal') {
+		if (ctx.target.layout === 'horizontal') {
 			if (ghost.C.X < rect.left + threshold && target.scrollLeft !== 0) {
 				const distance = ghost.C.X - rect.left;
 				const intensity = Math.max(0, Math.min(1, 1 - distance / threshold));
@@ -646,7 +646,7 @@ listManager.scroll.handler = function(ctx) {
 				scrollX = intensity * speed;
 			}
 		}
-		if (ctx.target.type === 'vertical') {
+		if (ctx.target.layout === 'vertical') {
 			if (ghost.C.Y < rect.top + threshold && target.scrollTop !== 0) {
 				const distance = ghost.C.Y - rect.top;
 				const intensity = Math.max(0, Math.min(1, 1 - distance / threshold));
@@ -701,7 +701,7 @@ function listManager(listEl, o = {}) {
 
 	const list = {
 		el: listEl,
-		type: o.type ?? 'grid',
+		layout: o.layout ?? 'grid',
 		handle: o.handle,
 		filter: o.filter,
 		share: o.share,
