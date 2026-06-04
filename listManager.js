@@ -22,6 +22,8 @@ listManager.start = function(e, list, ctx) {
 	if (e.which !== 1) return;
 	if (list.handle && !e.target.matches(list.handle)) return;
 
+	if (ctx.previous?.snapBack) ctx.previous.hook.onSBA(ctx.payload, 1);
+
 	ctx.source = list;
 	ctx.target = list;
 	ctx.previous = list;
@@ -82,8 +84,8 @@ listManager.move = function(e, list, ctx) {
 	ghost.el.style.top = `${ghost.top}px`;
 	ghost.el.style.left = `${ghost.left}px`;
 
-	ghost.C.Y = ghost.top + dragged.rect.height / 2;
-	ghost.C.X = ghost.left + dragged.rect.width / 2;
+	ghost.C.Y = ghost.top + ghost.height / 2;
+	ghost.C.X = ghost.left + ghost.width / 2;
 
 	dragged.C.Y = dragged.rect.top + dragged.rect.height / 2;
 	dragged.C.X = dragged.rect.left + dragged.rect.width / 2;
@@ -167,7 +169,9 @@ listManager.getList = function(list, ctx) {
 			from: dragged.el.getBoundingClientRect()
 		});
 
-		if (list.layout === 'grid' && target) {
+		if (!target) drag.target.el.append(dragged.el);
+
+		if (ctx.target.layout === 'grid') {
 			if (listB[listB.length - 2].el.isSameNode(target.el)) {
 				target.el.after(dragged.el);
 			} else {
@@ -176,7 +180,7 @@ listManager.getList = function(list, ctx) {
 			listManager.engie.grid.getPositions(ctx);
 		}
 
-		if (list.layout === 'vertical' && target) {
+		if (ctx.target.layout === 'vertical') {
 			if (ghost.C.Y > target.rect.top + target.rect.height / 2) {
 				target.el.after(dragged.el);
 			} else {
@@ -184,7 +188,7 @@ listManager.getList = function(list, ctx) {
 			}
 		}
 
-		if (list.layout === 'horizontal' && target) {
+		if (ctx.target.layout === 'horizontal') {
 			if (ghost.C.X > target.rect.left + target.rect.width / 2) {
 				target.el.after(dragged.el);
 			} else {
@@ -192,14 +196,12 @@ listManager.getList = function(list, ctx) {
 			}
 		}
 
-		if (!target) drag.target.el.append(dragged.el);
-
 		/*
 			const treeA = ctx.previous.cache.tree;
 			works but, if any change happens that not triggered by: dragging, dropping
 			the item by you it wont!
 			
-			Btw: while draggind this sould not occurs in most circumstances
+			Btw: while draggind this should not occurs in most circumstances
 		*/
 		const treeA = ctx.previous.getTree(ctx);
 		const treeB = ctx.target.getTree(ctx);
@@ -255,26 +257,29 @@ listManager.engie.uneven = function(ctx) {
 	parent.el = dragged.el.parentElement;
 	parent.rect = parent.el.getBoundingClientRect();
 
-	if (isVertical && !parent.el.isSameNode(target.el)) {
+	if (!parent.el.isSameNode(target.el)) {
+		parent.isGhost = parent.el.hasAttribute('ghost');
 
-		if (parent.rect.top > ghostC && !prev.el) {
-			return listManager.utility.swap(ctx, 'before', parent.el);
+		if (isVertical) {
+			if (parent.rect.top > ghostC && !prev.el) {
+				return listManager.utility.swap(ctx, 'before', parent.el);
+			}
+
+			if (parent.rect.bottom < ghostC && !next.el) {
+				if (parent.isGhost) return;
+				return listManager.utility.swap(ctx, 'after', parent.el);
+			}
 		}
 
-		if (parent.rect.bottom < ghostC && !next.el) {
-			if (parent.el.hasAttribute('ghost')) return;
-			return listManager.utility.swap(ctx, 'after', parent.el);
-		}
-	}
+		if (!isVertical) {
+			if (parent.rect.left > ghostC && !prev.el) {
+				return listManager.utility.swap(ctx, 'before', parent.el);
+			}
 
-	if (!isVertical && !parent.el.isSameNode(target.el)) {
-		if (parent.rect.left > ghostC && !prev.el) {
-			return listManager.utility.swap(ctx, 'before', parent.el);
-		}
-
-		if (parent.rect.right < ghostC && !next.el) {
-			if (parent.el.hasAttribute('ghost')) return;
-			return listManager.utility.swap(ctx, 'after', parent.el);
+			if (parent.rect.right < ghostC && !next.el) {
+				if (parent.isGhost) return;
+				return listManager.utility.swap(ctx, 'after', parent.el);
+			}
 		}
 	}
 
@@ -284,9 +289,9 @@ listManager.engie.uneven = function(ctx) {
 	next.rect = next.el?.getBoundingClientRect();
 
 	if (prev.el) {
-		if (isVertical && prev.el.hasAttribute('sublist') &&
-			prev.rect.bottom > ghostC) {
+		prev.isSublist = prev.el.hasAttribute('sublist');
 
+		if (isVertical && prev.isSublist && prev.rect.bottom > ghostC) {
 			if (prev.el.children.length !== 0) {
 				prev.el = prev.el.children[prev.el.children.length - 1];
 				return listManager.utility.swap(ctx, 'before', prev.el);
@@ -295,9 +300,7 @@ listManager.engie.uneven = function(ctx) {
 			}
 		}
 
-		if (!isVertical && prev.el.hasAttribute('sublist') &&
-			prev.rect.right > ghostC) {
-
+		if (!isVertical && prev.isSublist && prev.rect.right > ghostC) {
 			if (prev.el.children.length !== 0) {
 				prev.el = prev.el.children[prev.el.children.length - 1];
 				return listManager.utility.swap(ctx, 'before', prev.el);
@@ -314,9 +317,9 @@ listManager.engie.uneven = function(ctx) {
 	}
 
 	if (next.el) {
-		if (isVertical && next.el.hasAttribute('sublist') &&
-			next.rect.top < ghostC) {
+		next.isSublist = next.el.hasAttribute('sublist');
 
+		if (isVertical && next.isSublist && next.rect.top < ghostC) {
 			if (next.el.children.length !== 0) {
 				next.el = next.el.children[0];
 				return listManager.utility.swap(ctx, 'before', next.el);
@@ -325,9 +328,7 @@ listManager.engie.uneven = function(ctx) {
 			}
 		}
 
-		if (!isVertical && next.el.hasAttribute('sublist') &&
-			next.rect.left < ghostC) {
-
+		if (!isVertical && next.isSublist && next.rect.left < ghostC) {
 			if (next.el.children.length !== 0) {
 				next.el = next.el.children[0];
 				return listManager.utility.swap(ctx, 'before', next.el);
@@ -434,7 +435,7 @@ listManager.animation.run = function(items, tree, list, ctx) {
 	requestAnimationFrame(() => {
 		const nextLayer = tree => {
 			return tree.reduce((acc, i) => {
-				let item = items.find(ai => ai.el.isSameNode(i.el));
+				const item = items.find(ai => ai.el.isSameNode(i.el));
 				if (!item) return acc;
 				let children;
 
@@ -443,7 +444,7 @@ listManager.animation.run = function(items, tree, list, ctx) {
 
 				if (i.el.isSameNode(ctx.dragged.el)) ctx.dragged.rect = i.el.getBoundingClientRect();
 
-				let obj = {
+				const obj = {
 					el: i.el,
 					from: item.from,
 					to: i.el.getBoundingClientRect(),
@@ -456,7 +457,7 @@ listManager.animation.run = function(items, tree, list, ctx) {
 			}, []);
 		}
 
-		let animatableTree = nextLayer(tree);
+		const animatableTree = nextLayer(tree);
 
 		listManager.animation.play(animatableTree, list);
 	});
@@ -553,24 +554,25 @@ listManager.removeHandler = function(ctx, list) {
 
 	const { ghost, dragged } = ctx;
 
-	if (list.snapBack) listManager.snapBack(ctx, list);
-	else {
-		dragged.el.removeAttribute('dragged');
-		ghost.el.remove();
-	}
-
 	ctx.buildPayload();
 	ctx.previous.hook.onEnd(ctx.payload);
 
+	if (list.snapBack) listManager.snapBack(ctx);
+	else {
+		dragged.el.removeAttribute('dragged');
+		ghost.el.remove();
+
+		ctx.previous = null;
+	}
+
 	ctx.source = null;
 	ctx.target = null;
-	ctx.preivous = null;
 
 	ctx.pointer.down = false;
 	listManager.engie.grid.positions = null;
 }
 
-listManager.snapBack = function(ctx, list) {
+listManager.snapBack = function(ctx) {
 	const { ghost, dragged } = ctx;
 
 	const dx = ghost.left - dragged.rect.left;
@@ -585,9 +587,9 @@ listManager.snapBack = function(ctx, list) {
 	ghost.rect = ghost.el.getBoundingClientRect();
 
 	const start = performance.now();
-	const duration = list.animation.duration ?? listManager.animation.duration;
-	const type = list.animation.type ?? listManager.animation.type;
-	const exponent = list.animation.exponent ?? listManager.animation.exponent;
+	const duration = ctx.previous.animation.duration ?? listManager.animation.duration;
+	const type = ctx.previous.animation.type ?? listManager.animation.type;
+	const exponent = ctx.previous.animation.exponent ?? listManager.animation.exponent;
 
 	const step = time => {
 		if (!dragged.el) return;
@@ -614,10 +616,14 @@ listManager.snapBack = function(ctx, list) {
 		ghost.el.style.width = `${width}px`;
 		ghost.el.style.height = `${height}px`;
 
+		ctx.previous.hook.onSBA(ctx.payload, t);
+
 		if (t < 1) ghost.raf = requestAnimationFrame(step);
 		else {
 			dragged.el?.removeAttribute('dragged');
 			ghost.el.remove();
+
+			ctx.previous = null;
 		}
 	}
 
@@ -628,7 +634,7 @@ listManager.scroll.handler = function(ctx) {
 	const { ghost } = ctx;
 	if (!ctx.pointer.down) return;
 
-	if (ctx.target?.el) {
+	if (ctx.target?.el && ctx.target?.scroll.enable) {
 		const target = ctx.target.el;
 		const rect = target.getBoundingClientRect();
 
@@ -705,6 +711,7 @@ function listManager(listEl, o = {}) {
 	this.onListChange = this.onListChange || (() => { });
 	this.onSwap = this.onSwap || (() => { });
 	this.onEnd = this.onEnd || (() => { });
+	this.onSBA = this.onSBA || (() => { });
 	const hook = this;
 
 	const list = {
@@ -726,27 +733,30 @@ function listManager(listEl, o = {}) {
 			tree: []
 		},
 		scroll: {
+			enable: o.scroll?.enable ?? true,
 			speed: o.scroll?.speed,
 			threshold: o.scroll?.threshold
 		},
 		hook,
 		getFlat(ctx) {
-			this.cache.flat.length = 0;
+			const flat = [];
 
-			const walk = el => {
+			const nextLayer = el => {
 				for (const i of [...el.children]) {
-					if (!i.isSameNode(ctx.ghost.el)) this.cache.flat.push(i);
-					if (i.hasAttribute('sublist')) walk(i);
+					if (!i.isSameNode(ctx.ghost.el)) flat.push(i);
+					if (i.hasAttribute('sublist')) nextLayer(i);
 				}
 			}
 
-			walk(this.el);
-			return this.cache.flat;
+			nextLayer(this.el);
+
+			this.cache.flat = flat;
+			return flat;
 		},
 		getTree(ctx) {
-			this.cache.tree.length = 0;
+			const tree = [];
 
-			const walk = (el, list) => {
+			const nextLayer = (el, list) => {
 				for (const i of [...el.children]) {
 					let obj = {};
 
@@ -755,15 +765,17 @@ function listManager(listEl, o = {}) {
 
 					if (i.hasAttribute('sublist')) {
 						obj.children = [];
-						walk(i, obj.children);
+						nextLayer(i, obj.children);
 					}
 
 					list.push(obj);
 				}
 			}
 
-			walk(this.el, this.cache.tree);
-			return this.cache.tree;
+			nextLayer(this.el, tree);
+
+			this.cache.tree = tree;
+			return tree;
 		}
 	};
 
@@ -787,6 +799,8 @@ function listManager(listEl, o = {}) {
 			el: null,
 			top: null,
 			left: null,
+			width: null,
+			height: null,
 			C: {
 				X: null,
 				Y: null
@@ -799,8 +813,10 @@ function listManager(listEl, o = {}) {
 				this.el.style.width = `${ctx.dragged.rect.width}px`;
 				this.el.style.height = `${ctx.dragged.rect.height}px`;
 
-				if (ctx.source.fallBackOn) ctx.source.fallBackOn.append(this.el);
-				else ctx.source.el.append(this.el);
+				this.width = ctx.dragged.rect.width;
+				this.height = ctx.dragged.rect.height;
+
+				ctx.source.el.append(this.el);
 			}
 		},
 		payload: null,
