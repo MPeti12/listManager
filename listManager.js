@@ -22,7 +22,7 @@ listManager.start = function(e, list, ctx) {
 	if (e.which !== 1) return;
 	if (list.handle && !e.target.matches(list.handle)) return;
 
-	if (ctx.previous?.snapBack) ctx.previous.hook.onSBA(ctx.payload, 1);
+	if (ctx.previous?.snapBack && ctx.payload) ctx.previous.hook.onSBA(ctx.payload, 1);
 
 	ctx.source = list;
 	ctx.target = list;
@@ -548,7 +548,7 @@ listManager.animation.play = function(items, list) {
 	list.animation.raf = requestAnimationFrame(step);
 }
 
-listManager.removeHandler = function(ctx, list) {
+listManager.removeHandler = function(ctx) {
 	document.removeEventListener('pointermove', ctx.onMove);
 	document.removeEventListener('pointerup', ctx.onRemoveHandler);
 
@@ -557,7 +557,7 @@ listManager.removeHandler = function(ctx, list) {
 	ctx.buildPayload();
 	ctx.previous.hook.onEnd(ctx.payload);
 
-	if (list.snapBack) listManager.snapBack(ctx);
+	if (ctx.previous.snapBack) listManager.snapBack(ctx);
 	else {
 		dragged.el.removeAttribute('dragged');
 		ghost.el.remove();
@@ -820,7 +820,7 @@ function listManager(listEl, o = {}) {
 			}
 		},
 		payload: null,
-		buildPayload() {
+		buildPayload() {// could be a class
 			this.payload = {
 				source: {
 					items: {

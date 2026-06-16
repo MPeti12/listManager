@@ -138,11 +138,13 @@ lm.onListChange = e => console.log(e);
 lm.onSwap = e => console.log(e);
 lm.onEnd = e => console.log(e);
 lm.onSBA = (e, time) => {
-	e.dragged.el.style.background = `hsl(0, ${100 - (time * 100)}%, 50%)`;
-	e.ghost.el.style.opacity = `${1 - time}`;
+    const { ghost, dragged } = e;
+
+	if (dragged.el) dragged.el.style.background = `hsl(0, ${100 - (time * 100)}%, 50%)`;
+	if (ghost.el) ghost.el.style.opacity = `${1 - time}`;
 
     if (t === 1) {//when the animation ends u can remove it
-        e.dragged.el.removeAttribute('style');
+        dragged.el?.removeAttribute('style');
     }
 }
 ```
