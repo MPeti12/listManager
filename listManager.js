@@ -169,32 +169,32 @@ listManager.getList = function(list, ctx) {
 			from: dragged.el.getBoundingClientRect()
 		});
 
-		if (!target) drag.target.el.append(dragged.el);
-
-		if (ctx.target.layout === 'grid') {
-			if (listB[listB.length - 2].el.isSameNode(target.el)) {
-				target.el.after(dragged.el);
-			} else {
-				target.el.before(dragged.el);
+		if (target) {
+			if (ctx.target.layout === 'grid') {
+				if (listB[listB.length - 2].el.isSameNode(target.el)) {
+					target.el.after(dragged.el);
+				} else {
+					target.el.before(dragged.el);
+				}
+				listManager.engie.grid.getPositions(ctx);
 			}
-			listManager.engie.grid.getPositions(ctx);
-		}
 
-		if (ctx.target.layout === 'vertical') {
-			if (ghost.C.Y > target.rect.top + target.rect.height / 2) {
-				target.el.after(dragged.el);
-			} else {
-				target.el.before(dragged.el);
+			if (ctx.target.layout === 'vertical') {
+				if (ghost.C.Y > target.rect.top + target.rect.height / 2) {
+					target.el.after(dragged.el);
+				} else {
+					target.el.before(dragged.el);
+				}
 			}
-		}
 
-		if (ctx.target.layout === 'horizontal') {
-			if (ghost.C.X > target.rect.left + target.rect.width / 2) {
-				target.el.after(dragged.el);
-			} else {
-				target.el.before(dragged.el);
+			if (ctx.target.layout === 'horizontal') {
+				if (ghost.C.X > target.rect.left + target.rect.width / 2) {
+					target.el.after(dragged.el);
+				} else {
+					target.el.before(dragged.el);
+				}
 			}
-		}
+		} else ctx.target.el.append(dragged.el);
 
 		/*
 			const treeA = ctx.previous.cache.tree;
